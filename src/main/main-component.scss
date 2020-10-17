@@ -1,0 +1,29 @@
+.main-component {
+    // background-color: burlywood;
+
+    .map-container {
+        display: inline-block; 
+        position: relative;
+        min-height: 75%;
+        background-color: cadetblue;
+    }
+
+    .tmg-point { 
+        background-color:gray;
+        color: white;
+        border-radius: 100px;
+        padding: 4px;
+        border: 1px solid white;
+        font-family: sans-serif;
+        font-size: 15px;
+    }
+
+    .timer-prepend {
+        width: 3.5rem !important;
+    }
+
+    .temp-target {
+        width: 10rem !important;
+    }
+}
+
