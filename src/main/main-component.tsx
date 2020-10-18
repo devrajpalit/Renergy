@@ -9,7 +9,6 @@ import 'bootstrap/dist/js/bootstrap.min.js';
 import * as _ from 'lodash';
 
 interface IProps {
-    // countBy?: number;
 }
 
 interface IState {
@@ -23,7 +22,10 @@ interface IState {
     tempTarget: number;
     earliestOrLast: any;
     greaterOrLesser: any;
+    tempPolling: any;
     averageTemps: number[];
+    minTemps: number[];
+    maxTemps: number[];
 }
 
 class MainComponent extends React.Component<IProps, IState> {
@@ -62,6 +64,10 @@ class MainComponent extends React.Component<IProps, IState> {
         this.setState({ greaterOrLesser: event.target.value });
     }
 
+    public setTempPolling = (event: any) => {
+        this.setState({ tempPolling: event.target.value });
+    }
+
     public setPlayPause = () => {
         this.setState({ pauseAnimation: !this.state.pauseAnimation });
         if (this.state.pauseAnimation === false) {
@@ -84,25 +90,48 @@ class MainComponent extends React.Component<IProps, IState> {
         }
     }
 
-    public computeAverageTemps = (timeArr: any[]) => {
-        let averageTemps = [], timeElem, sum;
+    public computeTemps = (timeArr: any[]) => {
+        let averageTemps = [], minTemps = [], maxTemps = [], timeElem, sum, min, max;
         for (let i = 0; i < timeArr.length; i++) {
             timeElem = timeArr[i];
-            sum = 0;
-            for (let k = 2; k < timeElem.length; k = k + 2) { sum += timeElem[k]; }
+            sum = 0; min = 1000; max = -1000;
+            for (let k = 2; k < timeElem.length; k = k + 2) {
+                sum += timeElem[k];
+                min = _.min([min, timeElem[k]]);
+                max = _.max([max, timeElem[k]]);
+            }
             averageTemps[i] = sum / 9;
+            minTemps[i] = min;
+            maxTemps[i] = max;
         }
-        console.log(averageTemps);
-        return averageTemps;
+        return [averageTemps, minTemps, maxTemps];
+    }
+
+    public getSrcArr = () => {
+        switch (this.state.tempPolling) {
+            case 1:
+                return _.cloneDeep(this.state.averageTemps);
+            case 2:
+                return _.cloneDeep(this.state.minTemps);
+            case 3:
+                return _.cloneDeep(this.state.maxTemps);
+            default:
+                return _.cloneDeep(this.state.averageTemps);
+        }
     }
 
     public computeGoal = () => {
         if (this.state.tempTarget == null) {
-            alert('enter Target');
+            Swal.fire({
+                title: 'Error!',
+                text: 'Enter Target Temperature!',
+                icon: 'error',
+                confirmButtonText: 'Okay'
+            });
         } else {
             this.setState({ pauseAnimation: true });
             const target = this.state.tempTarget;
-            const srcArr = _.cloneDeep(this.state.averageTemps);
+            const srcArr: number[] = this.getSrcArr();
             const len = srcArr.length; let message;
             let foundFlag = false;
 
@@ -151,10 +180,9 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public loopWithMessage(i: number, message: any) {
-        let x = document.getElementById('results');
-        if (x) {
-            x.innerHTML = message;
-            // x.innerHTML = 'Average Temp greater than ' + this.state.tempTarget + 'C found at time = ' + this.state.timeArr[i][0] + 'and temp = ' ;
+        let htmlElem = document.getElementById('results');
+        if (htmlElem) {
+            htmlElem.innerHTML = message;
         }
         this.loop(i);
     }
@@ -164,7 +192,7 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public componentWillMount() {
-        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1 });
+        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1, tempPolling: 1 });
     }
 
     public renderMap = () => {
@@ -173,8 +201,8 @@ class MainComponent extends React.Component<IProps, IState> {
                 fetch('api/v1/get-temps?' + this.getURLParams()).then((response) => response.json()),
                 fetch('api/v1/get-coord-map?' + new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime]])).then((response) => response.json())
             ]).then((data) => {
-
-                this.setState({ timeArr: data[0], coordMap: data[1], averageTemps: this.computeAverageTemps(data[0]) });
+                const computedTemps = this.computeTemps(data[0]);
+                this.setState({ timeArr: data[0], coordMap: data[1], averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
             }).then(() => { this.run() });
         } else {
             Swal.fire({
@@ -277,7 +305,19 @@ class MainComponent extends React.Component<IProps, IState> {
                                             <option value="1">{'>'}</option>
                                             <option value="2">{'<'}</option>
                                         </select>
-                                        <input type="text" className="form-control temp-target" placeholder="Temperature Target" aria-label="Temp Target" onChange={this.setTempTarget.bind(this)} />
+                                        <input type="text" className="form-control temp-target" placeholder="Target Temperature" aria-label="Temp Target" onChange={this.setTempTarget.bind(this)} />
+                                    </div>
+                                </div>
+                                <div className="input-group">
+                                    <div className="input-group mb-2">
+                                        <div className="input-group-prepend">
+                                            <label className="input-group-text" htmlFor="inputGroupSelect03">Select Temp Polling</label>
+                                        </div>
+                                        <select className="custom-select" id="inputGroupSelect03" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
+                                            <option value="1">Avg</option>
+                                            <option value="2">Min</option>
+                                            <option value="3">Max</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -345,24 +385,18 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     private async loop(i: number) {
-
         await this.timer(this.state.animationSpeed);
         let timeElem = this.state.timeArr[i];
         let points = [];
-        console.log(timeElem[0]);
 
-        for (let k = 1; k < timeElem.length; k = k + 2) // Skipping the first time elemement, after that things will always come in pairs, so jump in 2 
-        {
+        for (let k = 1; k < timeElem.length; k = k + 2) {
             points.push([this.state.coordMap[timeElem[k]][0], this.state.coordMap[timeElem[k]][1], timeElem[k + 1], timeElem[k + 1]])
         }
 
         for (let j = 0; j < points.length; j++) {
-
             points[j][0] = points[j][0] * 1.0 * this.wIn / 2192;
             points[j][1] = points[j][1] * 1.0 * this.hIn / 1264;
-
         }
-
 
         for (let j = 0; j < points.length; j++) {
             points[j][2] = -50 + (points[j][2] - this.minVal) / (this.maxVal - this.minVal) * 150;
