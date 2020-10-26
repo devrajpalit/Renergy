@@ -8,6 +8,8 @@ import 'jquery/dist/jquery.min.js';
 import 'bootstrap/dist/js/bootstrap.min.js';
 import * as _ from 'lodash';
 
+import { ChartComponent } from '../chart/chart-component'
+
 interface IProps {
 }
 
@@ -197,13 +199,13 @@ class MainComponent extends React.Component<IProps, IState> {
 
     public renderMap = () => {
         if (this.state && this.state.startTime && this.state.endTime) {
-            Promise.all([
-                fetch('api/v1/get-temps?' + this.getURLParams()).then((response) => response.json()),
-                fetch('api/v1/get-coord-map?' + new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime]])).then((response) => response.json())
-            ]).then((data) => {
-                const computedTemps = this.computeTemps(data[0]);
-                this.setState({ timeArr: data[0], coordMap: data[1], averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
-            }).then(() => { this.run() });
+            fetch('http://35.154.156.101:5000/api/v1/getData?' + this.getURLParams())
+                .then(this.checkStatus)
+                .then((response) => response.json())
+                .then((data) => {
+                    const computedTemps = this.computeTemps(data.timeArr);
+                    this.setState({ timeArr: data.timeArr, coordMap: data.coordMap, averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
+                }).then(() => { this.run() });
         } else {
             Swal.fire({
                 title: 'Error!',
@@ -214,6 +216,17 @@ class MainComponent extends React.Component<IProps, IState> {
         }
     };
 
+    public checkStatus(response: any) {
+        if (response.status >= 200 && response.status < 300) {
+            return response
+        } else {
+            var error: any = new Error(response.statusText)
+            error.response = response
+            throw error
+        }
+    }
+
+
     public getURLParams = () => {
         return new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime]]);
     }
@@ -222,113 +235,121 @@ class MainComponent extends React.Component<IProps, IState> {
         if (this.isInitialized()) {
             return (
                 <div className="main-component">
-                    <div className="container">
-                        <div className="row my-2">
-                            <div className="col-12">
-                                <div className='map-container'>
-                                    <img id='map-image' src={floor4} width='100%' alt="Unable to load!" />
-                                </div>
-                            </div>
-                            <div className="col-3">
-
-                            </div>
-                        </div>
-                        <div className="row my-2">
-                            <div className="col-12">
-                                <div className="btn-group float-left" role="group" aria-label="Play Control">
-                                    <button type="button" className="btn btn-secondary" onClick={this.stepBack}>{'<'}</button>
-                                    <button type="button" className="btn btn-secondary" onClick={this.setPlayPause}>Play/Pause</button>
-                                    <button type="button" className="btn btn-secondary" onClick={this.stepAhead}>{'>'}</button>
-                                </div>
-
-                                <div className="btn-group float-right" role="group" id="speed-buttons" aria-label="Play Speed">
-                                    <button type="button" className="btn btn-secondary" id="S" onClick={this.setanimationSpeed.bind(this, 100)}>S</button>
-                                    <button type="button" className="btn btn-secondary active" id="M" onClick={this.setanimationSpeed.bind(this, 200)}>M</button>
-                                    <button type="button" className="btn btn-secondary" id="H" onClick={this.setanimationSpeed.bind(this, 300)}>H</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="row my-2">
-                            <div className="col-4">
-                                <div className="input-group">
-                                    <div className="input-group-prepend">
-                                        <span className="input-group-text timer-prepend">Start</span>
+                    <div className="container-fluid row">
+                        <div className="col-1"></div>
+                        <div className="col-6">
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <div className='map-container'>
+                                        <img id='map-image' src={floor4} width='100%' alt="Unable to load!" />
                                     </div>
-                                    <input className="form-control datepicker" type="datetime-local" onInput={this.updateStartTime.bind(this)} />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="row my-2">
-                            <div className="col-4">
-                                <div className="input-group">
-                                    <div className="input-group-prepend">
-                                        <span className="input-group-text timer-prepend">End</span>
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <div className="btn-group float-left" role="group" aria-label="Play Control">
+                                        <button type="button" className="btn btn-secondary" onClick={this.stepBack}>{'<'}</button>
+                                        <button type="button" className="btn btn-secondary" onClick={this.setPlayPause}>Play/Pause</button>
+                                        <button type="button" className="btn btn-secondary" onClick={this.stepAhead}>{'>'}</button>
                                     </div>
-                                    <input className="form-control datepicker" type="datetime-local" onInput={this.updateEndTime.bind(this)} />
+
+                                    <div className="btn-group float-right" role="group" id="speed-buttons" aria-label="Play Speed">
+                                        <button type="button" className="btn btn-secondary" id="H" onClick={this.setanimationSpeed.bind(this, 100)}>H</button>
+                                        <button type="button" className="btn btn-secondary active" id="M" onClick={this.setanimationSpeed.bind(this, 200)}>M</button>
+                                        <button type="button" className="btn btn-secondary" id="S" onClick={this.setanimationSpeed.bind(this, 300)}>S</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <ChartComponent timeArr={this.state.timeArr} coordMap={this.state.coordMap} animationSpeed={this.state.animationSpeed} />
                                 </div>
                             </div>
                         </div>
-
-                        <div className="row my-2">
-                            <div className="col-4">
-                                <div className="input-group">
-                                    <input className="btn btn-primary" type="button" value="Submit" onClick={this.renderMap}></input>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="row my-2">
-                            <div className="col-4">
-                                <h5 className="float-left">Temperature Goal Section</h5>
-                                <br></br>
-                                <div className="input-group">
-                                    <div className="input-group mb-2">
+                        <div className="col-3">
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <h5 className="float-left">Data Analysis Range</h5>
+                                    <div className="input-group">
                                         <div className="input-group-prepend">
-                                            <label className="input-group-text" htmlFor="inputGroupSelect01">Find</label>
+                                            <span className="input-group-text timer-prepend">Start</span>
                                         </div>
-                                        <select className="custom-select" id="inputGroupSelect01" defaultValue={1} onChange={this.setEarliestOrLast.bind(this)}>
-                                            <option value="1">Earliest</option>
-                                            <option value="2">Last</option>
-                                        </select>
-                                        <div className="input-group-append">
-                                            <label className="input-group-text" htmlFor="inputGroupSelect01">Time Stamp</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="input-group">
-                                    <div className="input-group mb-2">
-                                        <div className="input-group-prepend">
-                                            <label className="input-group-text" htmlFor="inputGroupSelect02">For Temp to be</label>
-                                        </div>
-                                        <select className="custom-select" id="inputGroupSelect02" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
-                                            <option value="1">{'>'}</option>
-                                            <option value="2">{'<'}</option>
-                                        </select>
-                                        <input type="text" className="form-control temp-target" placeholder="Target Temperature" aria-label="Temp Target" onChange={this.setTempTarget.bind(this)} />
-                                    </div>
-                                </div>
-                                <div className="input-group">
-                                    <div className="input-group mb-2">
-                                        <div className="input-group-prepend">
-                                            <label className="input-group-text" htmlFor="inputGroupSelect03">Select Temp Polling</label>
-                                        </div>
-                                        <select className="custom-select" id="inputGroupSelect03" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
-                                            <option value="1">Avg</option>
-                                            <option value="2">Min</option>
-                                            <option value="3">Max</option>
-                                        </select>
+                                        <input className="form-control datepicker" type="datetime-local" onInput={this.updateStartTime.bind(this)} />
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-4">
-                                <div id='results'></div>
+
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <div className="input-group">
+                                        <div className="input-group-prepend">
+                                            <span className="input-group-text timer-prepend">End</span>
+                                        </div>
+                                        <input className="form-control datepicker" type="datetime-local" onInput={this.updateEndTime.bind(this)} />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div className="row my-2">
-                            <div className="col-4">
-                                <div className="input-group">
-                                    <input className="btn btn-primary" type="button" value="Compute" onClick={this.computeGoal}></input>
+
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <div className="input-group">
+                                        <input className="btn btn-primary" type="button" value="Submit" onClick={this.renderMap}></input>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="row my-2">
+                                <div className="col-12">
+                                    <h5 className="float-left">Temperature Goal Finder</h5>
+                                    <br></br>
+                                    <div className="input-group">
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <label className="input-group-text" htmlFor="inputGroupSelect01">Find</label>
+                                            </div>
+                                            <select className="custom-select" id="inputGroupSelect01" defaultValue={1} onChange={this.setEarliestOrLast.bind(this)}>
+                                                <option value="1">Earliest</option>
+                                                <option value="2">Last</option>
+                                            </select>
+                                            <div className="input-group-append">
+                                                <label className="input-group-text" htmlFor="inputGroupSelect01">Time Stamp</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="input-group">
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <label className="input-group-text" htmlFor="inputGroupSelect02">For Temp to be</label>
+                                            </div>
+                                            <select className="custom-select" id="inputGroupSelect02" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
+                                                <option value="1">{'>'}</option>
+                                                <option value="2">{'<'}</option>
+                                            </select>
+                                            <input type="text" className="form-control temp-target" placeholder="Target Temperature" aria-label="Temp Target" onChange={this.setTempTarget.bind(this)} />
+                                        </div>
+                                    </div>
+                                    <div className="input-group">
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <label className="input-group-text" htmlFor="inputGroupSelect03">Select Temp Polling</label>
+                                            </div>
+                                            <select className="custom-select" id="inputGroupSelect03" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
+                                                <option value="1">Avg</option>
+                                                <option value="2">Min</option>
+                                                <option value="3">Max</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="row my-2">
+                                <div className="col-4">
+                                    <div className="input-group">
+                                        <input className="btn btn-primary" type="button" value="Compute" onClick={this.computeGoal}></input>
+                                    </div>
+                                </div>
+                                <div className="col-12">
+                                    <div id='results'></div>
                                 </div>
                             </div>
                         </div>
@@ -409,7 +430,7 @@ class MainComponent extends React.Component<IProps, IState> {
         if (this.state.pauseAnimation) {
             this.setState({ iter: i });
         } else {
-            if (i < this.state.timeArr.length) {
+            if (i < this.state.timeArr.length && i > -1) {
                 this.loop(i);
             }
         }
