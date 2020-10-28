@@ -199,7 +199,7 @@ class MainComponent extends React.Component<IProps, IState> {
 
     public renderMap = () => {
         if (this.state && this.state.startTime && this.state.endTime) {
-            fetch('http://35.154.156.101:5000/api/v1/getData?' + this.getURLParams())
+            fetch('https://e8b692777662.ngrok.io/api/v1/getData?' + this.getURLParams())
                 .then(this.checkStatus)
                 .then((response) => response.json())
                 .then((data) => {
