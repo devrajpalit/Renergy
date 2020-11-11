@@ -236,9 +236,6 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public render() {
-        // const mystyles = {
-        //     width: '40%',
-        // } as React.CSSProperties;
         if (this.isInitialized()) {
             return (
                 <div className="main-component">
@@ -446,10 +443,8 @@ class MainComponent extends React.Component<IProps, IState> {
         if (timeStampEle) {
             timeStampEle.innerHTML = timeElem[0];
         }
-        const progressBarEle = document.getElementById("progress-bar");
-        if (progressBarEle) {
-            progressBarEle?.setAttribute("style", `width: ${1 + Math.round(100 * i / this.state.timeArr.length)}%`);
-        }
+        document.getElementById("progress-bar")?.setAttribute("style", `width: ${Math.ceil(100 * (i + 1) / this.state.timeArr.length)}%`);
+
         // document.getElementById("time-stamp").innerHTML = timeElem[0];
         i++;
         if (this.state.pauseAnimation) {
