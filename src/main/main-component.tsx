@@ -199,13 +199,17 @@ class MainComponent extends React.Component<IProps, IState> {
 
     public renderMap = () => {
         if (this.state && this.state.startTime && this.state.endTime) {
+            document.getElementById('spinner')?.setAttribute("style", "display: inline-block");
             fetch('https://0ade3b7d02db.ngrok.io/api/v1/getData?' + this.getURLParams())
                 .then(this.checkStatus)
                 .then((response) => response.json())
                 .then((data) => {
                     const computedTemps = this.computeTemps(data.timeArr);
                     this.setState({ timeArr: data.timeArr, coordMap: data.coordMap, averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
-                }).then(() => { this.run() });
+                }).then(() => {
+                    document.getElementById('spinner')?.setAttribute("style", "display: none");
+                    this.run();
+                });
         } else {
             Swal.fire({
                 title: 'Error!',
@@ -232,6 +236,9 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public render() {
+        // const mystyles = {
+        //     width: '40%',
+        // } as React.CSSProperties;
         if (this.isInitialized()) {
             return (
                 <div className="main-component">
@@ -245,6 +252,11 @@ class MainComponent extends React.Component<IProps, IState> {
                                     </div>
                                 </div>
                             </div>
+                            <div>
+                                <div className="progress">
+                                    <div id="progress-bar" className="progress-bar progress-bar-striped"></div>
+                                </div>
+                            </div>
                             <div className="row my-2">
                                 <div className="col-12">
                                     <div className="btn-group float-left" role="group" aria-label="Play Control">
@@ -252,6 +264,7 @@ class MainComponent extends React.Component<IProps, IState> {
                                         <button type="button" className="btn btn-secondary" onClick={this.setPlayPause}>Play/Pause</button>
                                         <button type="button" className="btn btn-secondary" onClick={this.stepAhead}>{'>'}</button>
                                     </div>
+                                    <span id="time-stamp" />
 
                                     <div className="btn-group float-right" role="group" id="speed-buttons" aria-label="Play Speed">
                                         <button type="button" className="btn btn-secondary" id="H" onClick={this.setanimationSpeed.bind(this, 100)}>H</button>
@@ -293,7 +306,9 @@ class MainComponent extends React.Component<IProps, IState> {
                             <div className="row my-2">
                                 <div className="col-12">
                                     <div className="input-group">
-                                        <input className="btn btn-primary" type="button" value="Submit" onClick={this.renderMap}></input>
+                                        <button className="btn btn-primary" type="button" onClick={this.renderMap}>
+                                            Submit <span id="spinner" className="spinner-border spinner-border-sm" style={{ display: "none" }} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -426,6 +441,16 @@ class MainComponent extends React.Component<IProps, IState> {
         this.temperature_map.set_points(points);
         this.temperature_map.draw();
         this.temperature_map.context.finish();
+
+        const timeStampEle = document.getElementById("time-stamp");
+        if (timeStampEle) {
+            timeStampEle.innerHTML = timeElem[0];
+        }
+        const progressBarEle = document.getElementById("progress-bar");
+        if (progressBarEle) {
+            progressBarEle?.setAttribute("style", `width: ${1 + Math.round(100 * i / this.state.timeArr.length)}%`);
+        }
+        // document.getElementById("time-stamp").innerHTML = timeElem[0];
         i++;
         if (this.state.pauseAnimation) {
             this.setState({ iter: i });
