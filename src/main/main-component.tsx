@@ -3,6 +3,7 @@ import * as React from 'react';
 import './main-component.scss';
 import temperature_map_gl from './temperature-map-gl';
 import floor4 from './floor4.png';
+import floor7 from './floor7.png';
 import Swal from 'sweetalert2';
 import 'jquery/dist/jquery.min.js';
 import 'bootstrap/dist/js/bootstrap.min.js';
@@ -28,6 +29,7 @@ interface IState {
     averageTemps: number[];
     minTemps: number[];
     maxTemps: number[];
+    floor: any;
 }
 
 class MainComponent extends React.Component<IProps, IState> {
@@ -60,6 +62,10 @@ class MainComponent extends React.Component<IProps, IState> {
 
     public setEarliestOrLast = (event: any) => {
         this.setState({ earliestOrLast: event.target.value });
+    }
+
+    public setFloor = (event: any) => {
+        this.setState({ floor: event.target.value });
     }
 
     public setGreaterOrLesser = (event: any) => {
@@ -119,6 +125,15 @@ class MainComponent extends React.Component<IProps, IState> {
                 return _.cloneDeep(this.state.maxTemps);
             default:
                 return _.cloneDeep(this.state.averageTemps);
+        }
+    }
+
+    public getFloorPlan = () => {
+        switch (this.state.floor) {
+            case 'Fourth':
+                return floor4;
+            case 'Seventh':
+                return floor7;
         }
     }
 
@@ -194,7 +209,7 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public componentWillMount() {
-        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1, tempPolling: 1 });
+        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1, tempPolling: 1, floor: 'Fourth' });
     }
 
     public renderMap = () => {
@@ -232,7 +247,7 @@ class MainComponent extends React.Component<IProps, IState> {
 
 
     public getURLParams = () => {
-        return new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime]]);
+        return new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime], ['floor', this.state.floor]]);
     }
 
     public render() {
@@ -245,7 +260,7 @@ class MainComponent extends React.Component<IProps, IState> {
                             <div className="row my-2">
                                 <div className="col-12">
                                     <div className='map-container'>
-                                        <img id='map-image' src={floor4} width='100%' alt="Unable to load!" />
+                                        <img id='map-image' src={this.getFloorPlan()} width='100%' alt="Unable to load!" />
                                     </div>
                                 </div>
                             </div>
@@ -281,22 +296,33 @@ class MainComponent extends React.Component<IProps, IState> {
                                 <div className="col-12">
                                     <h5 className="float-left">Data Analysis Range</h5>
                                     <div className="input-group">
-                                        <div className="input-group-prepend">
-                                            <span className="input-group-text timer-prepend">Start</span>
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <span className="input-group-text timer-prepend">Start</span>
+                                            </div>
+                                            <input className="form-control datepicker" type="datetime-local" onInput={this.updateStartTime.bind(this)} />
                                         </div>
-                                        <input className="form-control datepicker" type="datetime-local" onInput={this.updateStartTime.bind(this)} />
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="row my-2">
-                                <div className="col-12">
                                     <div className="input-group">
-                                        <div className="input-group-prepend">
-                                            <span className="input-group-text timer-prepend">End</span>
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <span className="input-group-text timer-prepend">End</span>
+                                            </div>
+                                            <input className="form-control datepicker" type="datetime-local" onInput={this.updateEndTime.bind(this)} />
                                         </div>
-                                        <input className="form-control datepicker" type="datetime-local" onInput={this.updateEndTime.bind(this)} />
                                     </div>
+                                    <div className="input-group">
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <label className="input-group-text timer-prepend" htmlFor="inputGroupSelect00">Floor</label>
+                                            </div>
+                                            <select className="custom-select" id="inputGroupSelect00" defaultValue={'Fourth'} onChange={this.setFloor.bind(this)}>
+                                                <option value="Fourth">Fourth</option>
+                                                <option value="Seventh">Seventh</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
 
@@ -418,40 +444,41 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     private async loop(i: number) {
-        await this.timer(this.state.animationSpeed);
-        let timeElem = this.state.timeArr[i];
-        let points = [];
+        if (i < this.state.timeArr.length && i > -1) {
+            await this.timer(this.state.animationSpeed);
+            let timeElem = this.state.timeArr[i];
+            let points = [];
 
-        for (let k = 1; k < timeElem.length; k = k + 2) {
-            points.push([this.state.coordMap[timeElem[k]][0], this.state.coordMap[timeElem[k]][1], timeElem[k + 1], timeElem[k + 1]])
-        }
+            for (let k = 1; k < timeElem.length; k = k + 2) {
+                points.push([this.state.coordMap[timeElem[k]][0], this.state.coordMap[timeElem[k]][1], timeElem[k + 1], timeElem[k + 1]])
+            }
 
-        for (let j = 0; j < points.length; j++) {
-            points[j][0] = points[j][0] * 1.0 * this.wIn / 2192;
-            points[j][1] = points[j][1] * 1.0 * this.hIn / 1264;
-        }
+            for (let j = 0; j < points.length; j++) {
+                points[j][0] = points[j][0] * 1.0 * this.wIn / 2192;
+                points[j][1] = points[j][1] * 1.0 * this.hIn / 1264;
+            }
 
-        for (let j = 0; j < points.length; j++) {
-            points[j][2] = -50 + (points[j][2] - this.minVal) / (this.maxVal - this.minVal) * 150;
-        }
+            for (let j = 0; j < points.length; j++) {
+                points[j][2] = -50 + (points[j][2] - this.minVal) / (this.maxVal - this.minVal) * 150;
+            }
 
-        this.temperature_map.set_points(points);
-        this.temperature_map.draw();
-        this.temperature_map.context.finish();
+            this.temperature_map.set_points(points);
+            this.temperature_map.draw();
+            this.temperature_map.context.finish();
 
-        const timeStampEle = document.getElementById("time-stamp");
-        if (timeStampEle) {
-            timeStampEle.innerHTML = timeElem[0];
-        }
-        document.getElementById("progress-bar")?.setAttribute("style", `width: ${Math.ceil(100 * (i + 1) / this.state.timeArr.length)}%`);
-
-        // document.getElementById("time-stamp").innerHTML = timeElem[0];
-        i++;
-        if (this.state.pauseAnimation) {
-            this.setState({ iter: i });
-        } else {
-            if (i < this.state.timeArr.length && i > -1) {
-                this.loop(i);
+            const timeStampEle = document.getElementById("time-stamp");
+            if (timeStampEle) {
+                timeStampEle.innerHTML = timeElem[0];
+            }
+            document.getElementById("progress-bar")?.setAttribute("style", `width: ${Math.ceil(100 * (i + 1) / this.state.timeArr.length)}%`);
+            // document.getElementById("time-stamp").innerHTML = timeElem[0];
+            i++;
+            if (this.state.pauseAnimation) {
+                this.setState({ iter: i });
+            } else {
+                if (i < this.state.timeArr.length && i > -1) {
+                    this.loop(i);
+                }
             }
         }
     }
