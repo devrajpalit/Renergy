@@ -1,5 +1,10 @@
 import * as React from 'react';
 
+
+//calculator
+//time-zone
+
+
 import './main-component.scss';
 import temperature_map_gl from './temperature-map-gl';
 import floor4 from './floor4.png';
@@ -99,7 +104,7 @@ class MainComponent extends React.Component<IProps, IState> {
     }
 
     public computeTemps = (timeArr: any[]) => {
-        let averageTemps = [], minTemps = [], maxTemps = [], timeElem, sum, min, max;
+        let averageTemps = [], minTemps = [], maxTemps = [], timeElem, sum, min, max, len = (timeArr[0].length - 1) / 2;
         for (let i = 0; i < timeArr.length; i++) {
             timeElem = timeArr[i];
             sum = 0; min = 1000; max = -1000;
@@ -108,20 +113,21 @@ class MainComponent extends React.Component<IProps, IState> {
                 min = _.min([min, timeElem[k]]);
                 max = _.max([max, timeElem[k]]);
             }
-            averageTemps[i] = sum / 9;
+            averageTemps[i] = sum / len;
             minTemps[i] = min;
             maxTemps[i] = max;
         }
+        console.table([averageTemps, minTemps, maxTemps]);
         return [averageTemps, minTemps, maxTemps];
     }
 
     public getSrcArr = () => {
         switch (this.state.tempPolling) {
-            case 1:
+            case '1':
                 return _.cloneDeep(this.state.averageTemps);
-            case 2:
+            case '2':
                 return _.cloneDeep(this.state.minTemps);
-            case 3:
+            case '3':
                 return _.cloneDeep(this.state.maxTemps);
             default:
                 return _.cloneDeep(this.state.averageTemps);
@@ -371,7 +377,7 @@ class MainComponent extends React.Component<IProps, IState> {
                                             <div className="input-group-prepend">
                                                 <label className="input-group-text" htmlFor="inputGroupSelect03">Select Temp Polling</label>
                                             </div>
-                                            <select className="custom-select" id="inputGroupSelect03" defaultValue={1} onChange={this.setGreaterOrLesser.bind(this)}>
+                                            <select className="custom-select" id="inputGroupSelect03" defaultValue={1} onChange={this.setTempPolling.bind(this)}>
                                                 <option value="1">Avg</option>
                                                 <option value="2">Min</option>
                                                 <option value="3">Max</option>
@@ -381,7 +387,7 @@ class MainComponent extends React.Component<IProps, IState> {
                                 </div>
                             </div>
                             <div className="row my-2">
-                                <div className="col-4">
+                                <div className="col-4 mb-2">
                                     <div className="input-group">
                                         <input className="btn btn-primary" type="button" value="Compute" onClick={this.computeGoal}></input>
                                     </div>
