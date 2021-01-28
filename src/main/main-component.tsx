@@ -1,10 +1,5 @@
 import * as React from 'react';
 
-
-//calculator
-//time-zone
-
-
 import './main-component.scss';
 import temperature_map_gl from './temperature-map-gl';
 import floor4 from './floor4.png';
@@ -13,8 +8,13 @@ import Swal from 'sweetalert2';
 import 'jquery/dist/jquery.min.js';
 import 'bootstrap/dist/js/bootstrap.min.js';
 import * as _ from 'lodash';
+import spacetime from 'spacetime';
+import { zonedTimeToUtc, utcToZonedTime, format } from 'date-fns-tz';
 
-import { ChartComponent } from '../chart/chart-component'
+import { ChartComponent } from '../chart/chart-component';
+
+import { allTimeZones } from './constants'
+
 
 interface IProps {
 }
@@ -35,6 +35,7 @@ interface IState {
     minTemps: number[];
     maxTemps: number[];
     floor: any;
+    timeZone: any;
 }
 
 class MainComponent extends React.Component<IProps, IState> {
@@ -46,6 +47,20 @@ class MainComponent extends React.Component<IProps, IState> {
     private wIn: any;
     private hIn: any;
 
+    private informal = require('spacetime-informal');
+
+    private currentZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    private currentCountry = this.currentZone && this.currentZone.split('/')[0];
+    private sortedTimeZones = allTimeZones.sort((a, b) => {
+        if (this.currentZone && this.currentZone === a) { return -1 }
+        if (this.currentCountry && (a.includes(this.currentCountry) && !b.includes(this.currentCountry))) { return -1 }
+        return 0
+    })
+
+
+    public updateTimeZone = (event: any) => {
+        this.setState({ timeZone: this.informal.display(event.target.value) });
+    }
 
     public updateStartTime = (event: any) => {
         this.setState({ startTime: event.target.value });
@@ -119,6 +134,15 @@ class MainComponent extends React.Component<IProps, IState> {
         }
         console.table([averageTemps, minTemps, maxTemps]);
         return [averageTemps, minTemps, maxTemps];
+    }
+
+    public shiftTimeArr = (timeArr: any[]) => {
+        const shiftedTimeArr = _.cloneDeep(timeArr);
+        shiftedTimeArr.forEach((it) => {
+            const z1 = utcToZonedTime(it[0].concat('.000Z'), this.state.timeZone);
+            it[0] = format(z1, 'yyyy-MM-dd HH:mm:ss', { timeZone: this.state.timeZone });
+        });
+        return shiftedTimeArr;
     }
 
     public getSrcArr = () => {
@@ -210,12 +234,8 @@ class MainComponent extends React.Component<IProps, IState> {
         this.loop(i);
     }
 
-    public testMethod = () => {
-        alert(this.state.animationSpeed);
-    }
-
     public componentWillMount() {
-        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1, tempPolling: 1, floor: 'Fourth' });
+        this.setState({ animationSpeed: 200, pauseAnimation: false, iter: 1, earliestOrLast: 1, greaterOrLesser: 1, tempPolling: 1, floor: 'Fourth', timeZone: this.currentZone });
     }
 
     public renderMap = () => {
@@ -226,7 +246,8 @@ class MainComponent extends React.Component<IProps, IState> {
                 .then((response) => response.json())
                 .then((data) => {
                     const computedTemps = this.computeTemps(data.timeArr);
-                    this.setState({ timeArr: data.timeArr, coordMap: data.coordMap, averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
+                    const shiftedTimeArr = this.shiftTimeArr(data.timeArr);
+                    this.setState({ timeArr: shiftedTimeArr, coordMap: data.coordMap, averageTemps: computedTemps[0], minTemps: computedTemps[1], maxTemps: computedTemps[2] });
                 }).then(() => {
                     document.getElementById('spinner')?.setAttribute("style", "display: none");
                     this.run();
@@ -253,7 +274,11 @@ class MainComponent extends React.Component<IProps, IState> {
 
 
     public getURLParams = () => {
-        return new URLSearchParams([['start', this.state.startTime], ['end', this.state.endTime], ['floor', this.state.floor]]);
+        return new URLSearchParams([['start', this.timeZoneToGMT(this.state.startTime)], ['end', this.timeZoneToGMT(this.state.endTime)], ['floor', this.state.floor]]);
+    }
+
+    public timeZoneToGMT = (tzDate: string): string => {
+        return zonedTimeToUtc(tzDate, this.state.timeZone).toISOString().substr(0, 16);
     }
 
     public render() {
@@ -301,6 +326,21 @@ class MainComponent extends React.Component<IProps, IState> {
                             <div className="row my-2">
                                 <div className="col-12">
                                     <h5 className="float-left">Data Analysis Range</h5>
+                                    <div className="input-group">
+                                        <div className="input-group mb-2">
+                                            <div className="input-group-prepend">
+                                                <span className="input-group-text timer-prepend">TZ</span>
+                                            </div>
+                                            <input list="select" name="select" className="form-control" defaultValue={this.state.timeZone} onChange={this.updateTimeZone.bind(this)}></input>
+                                            <datalist hidden className="form-control" id="select">
+                                                {this.sortedTimeZones.map(timezone => (
+                                                    <option key={timezone} value={timezone}>
+                                                        {timezone}
+                                                    </option>
+                                                ))}
+                                            </datalist>
+                                        </div>
+                                    </div>
                                     <div className="input-group">
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
@@ -474,7 +514,7 @@ class MainComponent extends React.Component<IProps, IState> {
 
             const timeStampEle = document.getElementById("time-stamp");
             if (timeStampEle) {
-                timeStampEle.innerHTML = timeElem[0];
+                timeStampEle.innerHTML = timeElem[0] + this.state.timeZone;
             }
             document.getElementById("progress-bar")?.setAttribute("style", `width: ${Math.ceil(100 * (i + 1) / this.state.timeArr.length)}%`);
             // document.getElementById("time-stamp").innerHTML = timeElem[0];
