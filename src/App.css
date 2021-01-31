@@ -36,3 +36,8 @@
     transform: rotate(360deg);
   }
 }
+
+.form-control {
+  border-bottom-right-radius: 0.25rem !important;
+  border-top-right-radius: 0.25rem !important;
+}

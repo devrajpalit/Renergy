@@ -40,7 +40,7 @@ interface IState {
 
 class MainComponent extends React.Component<IProps, IState> {
 
-    private Swal = require('sweetalert2')
+    private Swal = require('sweetalert2');
     private minVal: any;
     private maxVal: any;
     private temperature_map: any;
@@ -59,7 +59,8 @@ class MainComponent extends React.Component<IProps, IState> {
 
 
     public updateTimeZone = (event: any) => {
-        this.setState({ timeZone: this.informal.display(event.target.value) });
+        const tz = this.informal.display(event.target.value);
+        if (!!tz && !!tz.iana) { this.setState({ timeZone: tz.iana }); }
     }
 
     public updateStartTime = (event: any) => {
@@ -331,8 +332,8 @@ class MainComponent extends React.Component<IProps, IState> {
                                             <div className="input-group-prepend">
                                                 <span className="input-group-text timer-prepend">TZ</span>
                                             </div>
-                                            <input list="select" name="select" className="form-control" defaultValue={this.state.timeZone} onChange={this.updateTimeZone.bind(this)}></input>
-                                            <datalist hidden className="form-control" id="select">
+                                            <input list="timezones-select" name="timezones-select" className="form-control" defaultValue={this.state.timeZone} onChange={this.updateTimeZone.bind(this)}></input>
+                                            <datalist hidden className="form-control" id="timezones-select">
                                                 {this.sortedTimeZones.map(timezone => (
                                                     <option key={timezone} value={timezone}>
                                                         {timezone}
@@ -340,24 +341,21 @@ class MainComponent extends React.Component<IProps, IState> {
                                                 ))}
                                             </datalist>
                                         </div>
-                                    </div>
-                                    <div className="input-group">
+
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
                                                 <span className="input-group-text timer-prepend">Start</span>
                                             </div>
                                             <input className="form-control datepicker" type="datetime-local" onInput={this.updateStartTime.bind(this)} />
                                         </div>
-                                    </div>
-                                    <div className="input-group">
+
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
                                                 <span className="input-group-text timer-prepend">End</span>
                                             </div>
                                             <input className="form-control datepicker" type="datetime-local" onInput={this.updateEndTime.bind(this)} />
                                         </div>
-                                    </div>
-                                    <div className="input-group">
+
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
                                                 <label className="input-group-text timer-prepend" htmlFor="inputGroupSelect00">Floor</label>
@@ -399,8 +397,7 @@ class MainComponent extends React.Component<IProps, IState> {
                                                 <label className="input-group-text" htmlFor="inputGroupSelect01">Time Stamp</label>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="input-group">
+
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
                                                 <label className="input-group-text" htmlFor="inputGroupSelect02">For Temp to be</label>
@@ -411,8 +408,7 @@ class MainComponent extends React.Component<IProps, IState> {
                                             </select>
                                             <input type="text" className="form-control temp-target" placeholder="Target Temperature" aria-label="Temp Target" onChange={this.setTempTarget.bind(this)} />
                                         </div>
-                                    </div>
-                                    <div className="input-group">
+
                                         <div className="input-group mb-2">
                                             <div className="input-group-prepend">
                                                 <label className="input-group-text" htmlFor="inputGroupSelect03">Select Temp Polling</label>
@@ -484,9 +480,7 @@ class MainComponent extends React.Component<IProps, IState> {
                 show_points: true,
             });
         }
-
         this.loop(1);
-
     }
 
     private async loop(i: number) {
@@ -514,7 +508,7 @@ class MainComponent extends React.Component<IProps, IState> {
 
             const timeStampEle = document.getElementById("time-stamp");
             if (timeStampEle) {
-                timeStampEle.innerHTML = timeElem[0] + this.state.timeZone;
+                timeStampEle.innerHTML = timeElem[0] + ' ' + this.state.timeZone;
             }
             document.getElementById("progress-bar")?.setAttribute("style", `width: ${Math.ceil(100 * (i + 1) / this.state.timeArr.length)}%`);
             // document.getElementById("time-stamp").innerHTML = timeElem[0];
@@ -524,7 +518,7 @@ class MainComponent extends React.Component<IProps, IState> {
             } else {
                 if (i < this.state.timeArr.length && i > -1) {
                     this.loop(i);
-                }
+                } else { this.setState({ iter: i - 1, pauseAnimation: true }); }
             }
         }
     }
